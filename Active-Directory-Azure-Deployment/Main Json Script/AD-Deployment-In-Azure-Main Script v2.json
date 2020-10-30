@@ -1,0 +1,602 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the administrator account of the new VM and domain"
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The password for the administrator account of the new VM and domain"
+            }
+        },
+        "domainName": {
+            "type": "string",
+            "metadata": {
+                "description": "The FQDN of the Active Directory Domain to be created"
+            }
+        },
+        "ouUsers": {
+            "type": "string",
+            "defaultValue": "WVD-Users",
+            "metadata": {
+                "description": "OU Users WVD name"
+            }
+        },
+        "ouHosts": {
+            "type": "string",
+            "defaultValue": "WVD-Hosts",
+            "metadata": {
+                "description": "OU Hosts WVD name"
+            }
+        },
+        "AdvirtualMachineName": {
+            "type": "string",
+            "defaultValue": "AD-0",
+            "minLength": 3,
+            "maxLength": 15,
+            "metadata": {
+                "description": "Virtual machine name for AD."
+            }
+        },
+        "AdConnectvirtualMachineName": {
+            "type": "string",
+            "defaultValue": "AD-Connect",
+            "minLength": 3,
+            "maxLength": 15,
+            "metadata": {
+                "description": "Virtual machine name for AD Connect."
+            }
+        },
+        "ProfilstvirtualMachineName":{
+            "type": "string",
+            "defaultValue": "Profils-Fslogix",
+            "minLength": 3,
+            "maxLength": 15,
+            "metadata": {
+                "description": "Virtual machine name for VM profils."
+            }
+        },
+        "bastion-host-name": {
+            "type": "string",
+            "defaultValue": "WVD-Bastion",
+            "metadata": {
+                "description": "Bastion Name"
+            }
+        }
+    },
+    "variables": {
+        "location": "[resourceGroup().location]",
+        "AdvmSize": "Standard_D2s_v3",
+        "AdprivateIPAddress": "10.0.0.4",
+        "AdConnectprivateIPAddress" : "10.0.0.5",
+        "AdConnectvmSize": "Standard_D2s_v3",
+        "ProfilsvmSize" : "Standard_D2s_v3",
+        "ProfilsprivateIPAddress": "10.0.0.6",
+        "virtualNetworkAddressRange": "10.0.0.0/16",
+        "AdsubnetRange" : "10.0.0.0/24",
+        "HostssubnetRange" : "10.0.1.0/24",
+        "BastionsubnetRange": "10.0.2.0/24",
+        "AdnetworkInterfaceName" : "ActiveDirectory-Nic",
+        "AdConnectnetworkInterfaceName" : "AD-Connect-Nic",
+        "ProfilsnetworkInterfaceName": "Profil-Fslogix-Nic",
+        "virtualNetworkName": "WVD-VNET",
+        "AdsubnetName": "ActiveDirectory-Subnet",
+        "HostssubnetName": "WVD-Hosts-Subnet",
+        "BastionsubnetName": "AzureBastionSubnet",
+        "publicIPAddressName":"Management-Public-IP"
+        },
+    "resources": [
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2019-02-01",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[variables('location')]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-11-01",
+            "name": "VNet",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "https://raw.githubusercontent.com/Aldebarancloud/Training-WVD/master/Active-Directory-Azure-Deployment/Nested-Script/Vnet-Configuration/Vnet-Creation-for-AD-Deployment.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "virtualNetworkName": {
+                        "value": "[variables('virtualNetworkName')]"
+                    },
+                    "virtualNetworkAddressRange": {
+                        "value": "[variables('virtualNetworkAddressRange')]"
+                    },
+                    "AdsubnetName": {
+                        "value": "[variables('AdsubnetName')]"
+                    },
+                    "AdsubnetRange": {
+                        "value": "[variables('AdsubnetRange')]"
+                    },
+                    "HostssubnetName": {
+                        "value": "[variables('HostssubnetName')]"
+                    },
+                    "HostssubnetRange": {
+                        "value": "[variables('HostssubnetRange')]"
+                    },
+                    "BastionsubnetName": {
+                        "value": "[variables('BastionsubnetName')]"
+                    },
+                    "BastionsubnetRange": {
+                        "value": "[variables('BastionsubnetRange')]"
+                    },
+                    "location": {
+                        "value": "[variables('location')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-02-01",
+            "name": "[variables('AdnetworkInterfaceName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "VNet"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "privateIPAddress": "[variables('AdprivateIPAddress')]",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('AdsubnetName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-02-01",
+            "name": "[variables('AdConnectnetworkInterfaceName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "VNet"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "privateIPAddress": "[variables('AdConnectprivateIPAddress')]",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('AdsubnetName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+                {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-02-01",
+            "name": "[variables('ProfilsnetworkInterfaceName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "VNet"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "privateIPAddress": "[variables('ProfilsprivateIPAddress')]",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('AdsubnetName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-03-01",
+            "name": "[parameters('AdvirtualMachineName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[variables('AdnetworkInterfaceName')]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('AdvmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('AdvirtualMachineName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2019-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "[concat(parameters('AdvirtualMachineName'),'_OSDisk')]",
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage",
+                        "managedDisk": {
+                            "storageAccountType": "StandardSSD_LRS"
+                        }
+                    },
+                    "dataDisks": [
+                        {
+                            "name": "[concat(parameters('AdvirtualMachineName'), '_DataDisk')]",
+                            "caching": "ReadWrite",
+                            "createOption": "Empty",
+                            "diskSizeGB": 20,
+                            "managedDisk": {
+                                "storageAccountType": "StandardSSD_LRS"
+                            },
+                            "lun": 0
+                        }
+                    ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AdnetworkInterfaceName'))]"
+                        }
+                    ]
+                }
+            },
+            "resources": [
+                {
+                    "type": "extensions",
+                    "apiVersion": "2019-03-01",
+                    "name": "CreateADForest",
+                    "location": "[variables('location')]",
+                    "dependsOn": [
+                        "[parameters('AdvirtualMachineName')]"
+                    ],
+                    "properties": {
+                        "publisher": "Microsoft.Powershell",
+                        "type": "DSC",
+                        "typeHandlerVersion": "2.19",
+                        "autoUpgradeMinorVersion": true,
+                        "settings": {
+                            "ModulesUrl": "https://github.com/Aldebarancloud/Training-WVD/blob/master/Active-Directory-Azure-Deployment/Nested-Script/AD-Configuration/AD-Configuration.zip?raw=true",
+                            "ConfigurationFunction": "CreateADPDC.ps1\\CreateADPDC",
+                            "Properties": {
+                                "DomainName": "[parameters('domainName')]",
+                                "AdminCreds": {
+                                    "UserName": "[parameters('adminUsername')]",
+                                    "Password": "PrivateSettingsRef:AdminPassword"
+                                }
+                            }
+                        },
+                        "protectedSettings": {
+                            "Items": {
+                                "AdminPassword": "[parameters('adminPassword')]"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-11-01",
+            "name": "UpdateVNetDNS",
+            "dependsOn": [
+                "CreateADForest"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "https://raw.githubusercontent.com/Aldebarancloud/Training-WVD/master/Active-Directory-Azure-Deployment/Nested-Script/DNS-Configuration/DNS-For-AD-Deployment.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "virtualNetworkName": {
+                        "value": "[variables('virtualNetworkName')]"
+                    },
+                    "virtualNetworkAddressRange": {
+                        "value": "[variables('virtualNetworkAddressRange')]"
+                    },
+                    "AdsubnetName": {
+                        "value": "[variables('AdsubnetName')]"
+                    },
+                    "AdsubnetRange": {
+                        "value": "[variables('AdsubnetRange')]"
+                    },
+                    "HostssubnetName": {
+                        "value": "[variables('HostssubnetName')]"
+                    },
+                    "HostssubnetRange": {
+                        "value": "[variables('HostssubnetRange')]"
+                    },
+                    "BastionsubnetName": {
+                        "value": "[variables('BastionsubnetName')]"
+                    },
+                    "BastionsubnetRange": {
+                        "value": "[variables('BastionsubnetRange')]"
+                    },
+                    "DNSServerAddress": {
+                        "value": [
+                            "[variables('AdprivateIPAddress')]"
+                        ]
+                    },
+                    "location": {
+                        "value": "[variables('location')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/bastionHosts",
+            "apiVersion": "2019-04-01",
+            "name": "[parameters('bastion-host-name')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "UpdateVNetDNS",
+                "[variables('publicIPAddressName')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConf",
+                        "properties": {
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('BastionsubnetName'))]"
+                            },
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIPAddressName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-03-01",
+            "name": "[concat(parameters('AdvirtualMachineName'), '/OU')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "UpdateVNetDNS"
+            ],
+            "properties": {
+                "autoUpgradeMinorVersion": true,
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.9",
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/Aldebarancloud/Training-WVD/master/Active-Directory-Azure-Deployment/Nested-Script/AD-OU-Creation/OU-Creation.ps1"
+                    ],
+                    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File OU-Creation.ps1', ' -ouUsers ', '\"' , parameters('ouUsers') , '\"', ' -ouHosts ', '\"' , parameters('ouHosts') , '\"') ]"
+                },
+                "protectedSettings": {
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-03-01",
+            "name": "[parameters('AdConnectvirtualMachineName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "UpdateVNetDNS"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('AdConnectvmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('AdConnectvirtualMachineName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2019-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "[concat(parameters('AdConnectvirtualMachineName'),'_OSDisk')]",
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage",
+                        "managedDisk": {
+                            "storageAccountType": "StandardSSD_LRS"
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AdConnectnetworkInterfaceName'))]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-03-01",
+            "name": "[concat(parameters('AdConnectvirtualMachineName'),'/joindomain')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[parameters('AdConnectvirtualMachineName')]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "JsonADDomainExtension",
+                "typeHandlerVersion": "1.3",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "Name": "[parameters('domainName')]",
+                    "User": "[concat(parameters('domainName'), '\\', parameters('adminUsername'))]",
+                    "Restart": "true",
+                    "Options": "3"
+                },
+                "protectedSettings": {
+                    "Password": "[parameters('adminPassword')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-03-01",
+            "name": "[concat(parameters('AdConnectvirtualMachineName'), '/AdConnect')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('AdConnectvirtualMachineName'),'/extensions/joindomain')]"
+            ],
+            "properties": {
+                "autoUpgradeMinorVersion": true,
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.9",
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/Aldebarancloud/Training-WVD/master/Active-Directory-Azure-Deployment/Nested-Script/AD-Connect%20Installation/AD-Connect-Installation.ps1"
+                    ],
+                    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File AD-Connect-Installation.ps1')]"
+
+                },
+                "protectedSettings": {
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-03-01",
+            "name": "[parameters('ProfilstvirtualMachineName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "UpdateVNetDNS"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('ProfilsvmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('ProfilstvirtualMachineName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2019-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "[concat(parameters('ProfilstvirtualMachineName'),'_OSDisk')]",
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage",
+                        "managedDisk": {
+                            "storageAccountType": "StandardSSD_LRS"
+                        }
+                    },
+                    "dataDisks": [
+                        {
+                            "name": "[concat(parameters('ProfilstvirtualMachineName'), '_DataDisk')]",
+                            "caching": "ReadWrite",
+                            "createOption": "Empty",
+                            "diskSizeGB": 1024,
+                            "managedDisk": {
+                                "storageAccountType": "StandardSSD_LRS"
+                            },
+                            "lun": 0
+                        }
+                    ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('ProfilsnetworkInterfaceName'))]"
+                        }
+                    ]
+                }
+            },
+            "resources":[
+                    {
+                    "type": "extensions",
+                    "apiVersion": "2019-03-01",
+                    "name": "InitDisk",
+                    "location": "[variables('location')]",
+                    "dependsOn": [
+                        "[parameters('ProfilstvirtualMachineName')]"
+                    ],
+                    "properties": {
+                        "publisher": "Microsoft.Powershell",
+                        "type": "DSC",
+                        "typeHandlerVersion": "2.19",
+                        "autoUpgradeMinorVersion": true,
+                        "settings": {
+                            "ModulesUrl": "https://github.com/Aldebarancloud/Training-WVD/blob/master/Active-Directory-Azure-Deployment/Nested-Script/Disk-Initialization/Disk-Initialization.zip?raw=true",
+                            "ConfigurationFunction": "InitDisk.ps1\\InitDisk",
+                            "Properties": {
+                                "DomainName": "[parameters('domainName')]",
+                                "AdminCreds": {
+                                    "UserName": "[parameters('adminUsername')]",
+                                    "Password": "PrivateSettingsRef:AdminPassword"
+                                }
+                            }
+                        },
+                        "protectedSettings": {
+                            "Items": {
+                                "AdminPassword": "[parameters('adminPassword')]"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-03-01",
+            "name": "[concat(parameters('ProfilstvirtualMachineName'),'/joindomain')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[parameters('ProfilstvirtualMachineName')]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "JsonADDomainExtension",
+                "typeHandlerVersion": "1.3",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "Name": "[parameters('domainName')]",
+                    "User": "[concat(parameters('domainName'), '\\', parameters('adminUsername'))]",
+                    "Restart": "true",
+                    "Options": "3"
+                },
+                "protectedSettings": {
+                    "Password": "[parameters('adminPassword')]"
+                }
+            }
+        }
+    ]
+}
