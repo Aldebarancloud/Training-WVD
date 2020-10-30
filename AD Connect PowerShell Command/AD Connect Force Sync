@@ -1,0 +1,5 @@
+#check the value for the ADSync
+Get-ADSyncScheduler
+
+#Run sync
+Start-ADSyncSyncCycle
