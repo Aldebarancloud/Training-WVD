@@ -1,6 +1,6 @@
 param( 
-[variables(Mandatory=$true)][string]$ouUsers,
-[variables(Mandatory=$true)][string]$ouHosts
+[parameter(Mandatory=$true)][string]$ouUsers,
+[parameter(Mandatory=$true)][string]$ouHosts
 )
 
 New-ADOrganizationalUnit -Name $ouUsers
@@ -8,7 +8,7 @@ New-ADOrganizationalUnit -Name $ouHosts
 
 #####Security Group Creation
 New-ADGroup -Name ’User-Of-WVD’ -GroupCategory ’Security’  
--GroupScope ’DomainLocal’ -Path ’$ouUsers’
+-GroupScope ’DomainLocal’
 
 ##################################################
 # Add AD Users
