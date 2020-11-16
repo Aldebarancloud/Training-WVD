@@ -1,10 +1,28 @@
-#Download the lastest ZipFile from the microsoft GitHub
-#https://github.com/Azure-Samples/azure-files-samples/releases
-#Unzip
+#AzFile Source
+$AzFileSource = "https://github.com/Azure-Samples/azure-files-samples/releases/download/v0.2.2/AzFilesHybrid.zip"
 
-Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser 
+#Download Location
+$locationAzFiledownload = "D:\AzFilesHybrid.zip"
 
-cd <path>
+#Folder Name
+$folder = "D:\AzFileHybrid"
+
+#Folder Creation for Unzip
+New-Item -Path $folder -ItemType Directory
+
+#Download AzFile
+Invoke-WebRequest -Uri $AzFileSource -OutFile $locationAzFiledownload
+
+#Unzip AzFile
+Expand-Archive D:\AzFilesHybrid.zip -DestinationPath D:\AzFileHybrid
+
+Install-Module AZ
+
+Import-Module AZ
+
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser
+
+cd D:\AzFileHybrid
 
 .\CopyToPSPath.ps1
 
