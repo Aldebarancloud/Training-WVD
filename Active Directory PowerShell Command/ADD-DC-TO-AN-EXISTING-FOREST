@@ -1,0 +1,2 @@
+Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+Install-ADDSDomainController -DomainName "yourdomain.com" -InstallDns:$true -Credential (Get-Credential "DOMAIN\administratreur")
