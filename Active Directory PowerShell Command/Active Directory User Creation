@@ -5,7 +5,7 @@
 # Set values for your environment
 $numUsers = "10"
 $userPrefix = "WVDUser"
-$passWord = "Revolution666!"
+$passWord = ""
 $userDomain = "wvdcoealex.com"
 
 
