@@ -5,8 +5,9 @@
 # Set values for your environment
 $numUsers = "10"
 $userPrefix = "WVDUser"
-$passWord = ""
-$userDomain = ""
+$passWord = "Revolution666!"
+$userDomain = "wvdcoealex.com"
+
 
 # Import the AD Module
 Import-Module ActiveDirectory
@@ -24,6 +25,7 @@ New-ADUser -name $newUser -SamAccountName $newUser -UserPrincipalName $newUser@$
 ##################################################
 # Create a New Group and add the Users to it
 ##################################################
+$AdGroup = "VDIuser"
+NEW-ADGroup –name $AdGroup –groupscope Global
 
-NEW-ADGroup –name “WVDuser” –groupscope Global
-Add-ADGroupMember -Identity WVDuser -Members WVDUser0,WVDUser1,WVDUser2,WVDUser3,WVDUser4,WVDUser5,WVDUser6,WVDUser7,WVDUser8,WVDUser9,WVDUser10
+Get-ADUser -Filter 'Name -like "WVDUser*"'| ForEach-Object -process {Add-ADGroupMember -identity $AdGroup -Members $_.SamAccountName}
