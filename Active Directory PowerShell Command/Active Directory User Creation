@@ -6,7 +6,7 @@
 $numUsers = "10"
 $userPrefix = "WVDUser"
 $passWord = ""
-$userDomain = "wvdcoealex.com"
+$userDomain = ""
 
 
 # Import the AD Module
