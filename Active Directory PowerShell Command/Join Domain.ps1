@@ -1,1 +1,1 @@
-Add-Computer -DomainName  DOMAIN -Restart
+Add-Computer -DomainName DOMAIN -Restart
