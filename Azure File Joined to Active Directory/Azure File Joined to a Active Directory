@@ -1,5 +1,7 @@
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 #AzFile Source
-$AzFileSource = "https://github.com/Azure-Samples/azure-files-samples/releases/download/v0.2.2/AzFilesHybrid.zip"
+$AzFileSource = "https://github.com/Azure-Samples/azure-files-samples/releases/download/v0.2.3/AzFilesHybrid.zip"
 
 #Download Location
 $locationAzFiledownload = "D:\AzFilesHybrid.zip"
